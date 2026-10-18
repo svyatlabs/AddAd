@@ -14,36 +14,62 @@ document.getElementById("settings-btn").addEventListener("click", () => {
   window.close();
 });
 
-document.getElementById("destroy-btn").addEventListener("click", async () => {
-  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
-  const url = tab && tab.url ? tab.url : "";
+// Everything the Destroy button needs is computed at popup-open time.
+// Firefox only shows a permission prompt when permissions.request() is
+// called synchronously inside the click handler — a single await before
+// it and the gesture is considered spent, the prompt is silently refused.
+let currentTab = null;
+let currentHost = null;
+let alreadyDoomed = false;
+let hasPermission = false;
 
-  if (!/^https?:/.test(url)) {
+(async () => {
+  const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+  currentTab = tab;
+  const url = tab && tab.url ? tab.url : "";
+  if (!/^https?:/.test(url)) return;
+
+  currentHost = new URL(url).hostname.replace(/^www\./, "");
+  const { websites = [] } = await browser.storage.local.get("websites");
+  alreadyDoomed = websites.includes(currentHost);
+  try {
+    hasPermission = await browser.permissions.contains({
+      origins: ["*://" + currentHost + "/*", "*://www." + currentHost + "/*"],
+    });
+  } catch { /* leave false */ }
+})();
+
+document.getElementById("destroy-btn").addEventListener("click", () => {
+  if (!currentHost) {
     statusEl.textContent = "Nothing to destroy here.";
     return;
   }
+  if (alreadyDoomed) {
+    statusEl.textContent = currentHost + " is already doomed.";
+    return;
+  }
+  alreadyDoomed = true;
 
-  const hostname = new URL(url).hostname.replace(/^www\./, "");
-  const { websites = [] } = await browser.storage.local.get("websites");
+  // Save via the background so it survives the popup being closed by the
+  // permission doorhanger.
+  browser.runtime.sendMessage({ type: "addSite", hostname: currentHost }).catch(() => {});
 
-  if (websites.includes(hostname)) {
-    statusEl.textContent = hostname + " is already doomed.";
+  if (hasPermission) {
+    // Nothing to prompt for — register, reload, done.
+    browser.runtime.sendMessage({ type: "syncScripts" }).catch(() => {}).then(() => {
+      if (currentTab) browser.tabs.reload(currentTab.id);
+      window.close();
+    });
     return;
   }
 
-  websites.push(hostname);
-  await browser.storage.local.set({ websites });
-
-  // Per-site host permission, asked while we still have the click gesture.
-  // If the prompt closes the popup, the background's permissions.onAdded
-  // listener finishes the registration for us.
-  try {
-    await browser.permissions.request({
-      origins: ["*://" + hostname + "/*", "*://www." + hostname + "/*"],
-    });
-  } catch { /* ignore — site stays listed, options page offers the grant */ }
-  browser.runtime.sendMessage({ type: "syncScripts" }).catch(() => {});
-
-  browser.tabs.reload(tab.id);
-  window.close();
+  // Prompt first, synchronously, while the click gesture is fresh. After a
+  // grant the background's permissions.onAdded listener registers the
+  // content script and reloads this tab — that path also covers Firefox
+  // closing the popup when the doorhanger opens.
+  browser.permissions.request({
+    origins: ["*://" + currentHost + "/*", "*://www." + currentHost + "/*"],
+  }).catch(() => false).then(() => {
+    window.close();
+  });
 });

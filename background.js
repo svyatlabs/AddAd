@@ -48,11 +48,45 @@ async function syncRegisteredScripts() {
   }
 }
 
+function domainMatches(hostname, pattern) {
+  if (pattern.startsWith("*.")) {
+    const base = pattern.slice(2);
+    return hostname === base || hostname.endsWith("." + base);
+  }
+  return hostname === pattern || hostname === "www." + pattern || "www." + hostname === pattern;
+}
+
 // Re-sync whenever grants change (covers the popup closing mid-flow on grant
 // prompts) and on startup/update as a safety net.
-browser.permissions.onAdded.addListener(() => { syncRegisteredScripts(); });
+browser.permissions.onAdded.addListener(async () => {
+  await syncRegisteredScripts();
+
+  // If the active tab is a targeted site that just became usable, reload it
+  // so the ads start immediately — this finishes the popup's Destroy flow
+  // even when Firefox closes the popup to show the permission doorhanger.
+  try {
+    const [tab] = await browser.tabs.query({ active: true, currentWindow: true });
+    if (!tab || !/^https?:/.test(tab.url || "")) return;
+    const host = new URL(tab.url).hostname;
+    const { websites = [] } = await browser.storage.local.get("websites");
+    if (!websites.some((p) => domainMatches(host, p))) return;
+    if (await browser.permissions.contains({ origins: ["*://" + host + "/*"] })) {
+      browser.tabs.reload(tab.id);
+    }
+  } catch { /* best effort */ }
+});
 browser.permissions.onRemoved.addListener(() => { syncRegisteredScripts(); });
 browser.runtime.onStartup.addListener(() => { syncRegisteredScripts(); });
+
+// Adds a target site to storage on behalf of the popup, so the write
+// survives the popup being torn down by the permission prompt.
+async function addSite(hostname) {
+  const { websites = [] } = await browser.storage.local.get("websites");
+  if (websites.includes(hostname)) return;
+  websites.push(hostname);
+  await browser.storage.local.set({ websites });
+  await syncRegisteredScripts();
+}
 
 browser.runtime.onInstalled.addListener(() => {
   syncRegisteredScripts();
@@ -88,11 +122,17 @@ async function recordSiteSeen(hostname) {
   browser.storage.local.set({ recentSites });
 }
 
-browser.runtime.onMessage.addListener((msg) => {
+browser.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "siteSeen") {
     recordSiteSeen(msg.hostname);
+    return;
+  }
+  if (msg.type === "addSite") {
+    addSite(msg.hostname).finally(() => sendResponse(true));
+    return true; // async response
   }
   if (msg.type === "syncScripts") {
-    syncRegisteredScripts();
+    syncRegisteredScripts().finally(() => sendResponse(true));
+    return true; // async response
   }
 });

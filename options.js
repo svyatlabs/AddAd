@@ -328,20 +328,24 @@ function renderList() {
   });
 }
 
-addBtn.addEventListener("click", async () => {
+addBtn.addEventListener("click", () => {
   const val = websiteInput.value.trim();
   if (!val) return;
   const cleaned = val.replace(/^https?:\/\//, "").replace(/\/+$/, "").split("/")[0];
   if (!cleaned || websites.includes(cleaned)) return;
 
+  // Permission prompt FIRST and synchronously: Firefox only honors
+  // permissions.request() while the click gesture is fresh — any await
+  // before it and the prompt is silently refused.
+  const permPromise = requestSitePermission(cleaned);
+
   websites.push(cleaned);
   saveWebsites();
   websiteInput.value = "";
-
-  // Ask for this site's host permission while we still have the click
-  // gesture; the row renders with an "Allow access" chip if declined.
-  await requestSitePermission(cleaned);
   renderList();
+
+  // Re-render once the prompt settles so the "Allow access" chip state is right
+  permPromise.then(() => renderList());
 });
 
 websiteInput.addEventListener("keydown", (e) => {
