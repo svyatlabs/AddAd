@@ -52,7 +52,7 @@
 
   // ===================== GLOBALS =====================
   let settings = {
-    intensity: 40, // 1-200
+    intensity: 75, // 1-200
     reloadMinutes: 5,
     redirectURL: "https://www.youtube.com/watch?v=dQw4w9WgXcQ",
     pingPong: true,
@@ -68,7 +68,7 @@
 
   function normalizeIntensity(value) {
     const n = Number(value);
-    if (!Number.isFinite(n)) return 40;
+    if (!Number.isFinite(n)) return 75;
     return Math.max(1, Math.min(200, Math.round(n)));
   }
 

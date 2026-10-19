@@ -20,7 +20,7 @@ const whitelistEmpty = document.getElementById("whitelist-empty");
 
 function normalizeIntensity(value) {
   const n = Number(value);
-  if (!Number.isFinite(n)) return 40;
+  if (!Number.isFinite(n)) return 75;
   return Math.max(1, Math.min(200, Math.round(n)));
 }
 
@@ -151,7 +151,7 @@ function saveSiteSettings() {
 
 function getSiteConf(site) {
   if (!siteSettings[site]) {
-    siteSettings[site] = { customIntensity: false, intensity: 40, reloadMinutes: 5 };
+    siteSettings[site] = { customIntensity: false, intensity: 75, reloadMinutes: 5 };
   }
   return siteSettings[site];
 }

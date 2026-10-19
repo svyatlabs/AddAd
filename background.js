@@ -95,7 +95,7 @@ browser.runtime.onInstalled.addListener(() => {
     const defaults = {};
     if (!data.websites) defaults.websites = [];
     if (!data.whitelist) defaults.whitelist = [];
-    if (!data.intensity) defaults.intensity = 40;
+    if (!data.intensity) defaults.intensity = 75;
     if (!data.reloadMinutes) defaults.reloadMinutes = 5;
     if (!data.redirectURL) defaults.redirectURL = "https://www.youtube.com/watch?v=dQw4w9WgXcQ";
     if (!data.pingPongCount) defaults.pingPongCount = 1;
