@@ -448,17 +448,29 @@
   // ===================== WHITELIST =====================
   // Entries can be a bare domain ("example.com"), a subdomain, or include a
   // path prefix ("www.instagram.com/direct/inbox") — those pages never get
-  // ads even when the site itself is targeted.
+  // ads even when the site itself is targeted. A "#fragment" is matched too,
+  // for hash-routed apps like web.telegram.org/a/#1009423409.
   function whitelistMatches(entry) {
-    const slash = entry.indexOf("/");
-    const entryHost = slash === -1 ? entry : entry.slice(0, slash);
-    const entryPath = slash === -1 ? "" : entry.slice(slash).replace(/\/+$/, "");
+    const hashAt = entry.indexOf("#");
+    const entryHash = hashAt === -1 ? "" : entry.slice(hashAt).replace(/\/+$/, "");
+    const rest = hashAt === -1 ? entry : entry.slice(0, hashAt);
+    const slash = rest.indexOf("/");
+    const entryHost = slash === -1 ? rest : rest.slice(0, slash);
+    const entryPath = slash === -1 ? "" : rest.slice(slash).replace(/\/+$/, "");
 
     if (!domainMatches(location.hostname, entryHost)) return false;
-    if (!entryPath) return true;
 
-    const path = location.pathname.replace(/\/+$/, "");
-    return path === entryPath || path.startsWith(entryPath + "/");
+    if (entryPath) {
+      const path = location.pathname.replace(/\/+$/, "");
+      if (path !== entryPath && !path.startsWith(entryPath + "/")) return false;
+    }
+
+    if (entryHash.length > 1) {
+      const hash = location.hash.replace(/\/+$/, "");
+      if (hash !== entryHash && !hash.startsWith(entryHash + "/")) return false;
+    }
+
+    return true;
   }
 
   function isWhitelisted() {
@@ -533,6 +545,7 @@
     };
 
     window.addEventListener("popstate", () => onURLChange());
+    window.addEventListener("hashchange", () => onURLChange());
 
     // Also poll as a fallback (some SPAs use hash or other tricks)
     setInterval(() => {

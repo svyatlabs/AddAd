@@ -386,7 +386,13 @@ function renderWhitelist() {
 whitelistAddBtn.addEventListener("click", () => {
   const val = whitelistInput.value.trim();
   if (!val) return;
-  const cleaned = val.replace(/^https?:\/\//, "").replace(/\/+$/, "").split(/[?#]/)[0];
+  // Keep the #fragment: hash-routed apps (e.g. web.telegram.org/a/#12345)
+  // identify the actual page there. Query strings are still dropped.
+  const noProto = val.replace(/^https?:\/\//, "");
+  const hashAt = noProto.indexOf("#");
+  const base = (hashAt === -1 ? noProto : noProto.slice(0, hashAt)).split("?")[0].replace(/\/+$/, "");
+  const hash = hashAt === -1 ? "" : noProto.slice(hashAt).replace(/\/+$/, "");
+  const cleaned = base && hash.length > 1 ? base + hash : base;
   if (cleaned && !whitelist.includes(cleaned)) {
     whitelist.push(cleaned);
     browser.storage.local.set({ whitelist });
