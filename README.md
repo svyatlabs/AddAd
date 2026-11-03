@@ -15,7 +15,7 @@ harmed in the making of this extension.
 - **Pick your victims** — target specific domains (`example.com`, `*.reddit.com`)
 - **Intensity slider** — from *Low* to *CHAOS* to *NO RETURN* (1–200 ads per page)
 - **Per-site overrides** — give reddit the chaos it deserves while keeping your bank readable
-- **Whitelist** — spare specific pages even on targeted sites, paths included (`www.instagram.com/direct/inbox`)
+- **Whitelist** — spare specific pages even on targeted sites, paths and `#fragments` included (`www.instagram.com/direct/inbox`, `web.telegram.org/a/#1009423409`)
 - **Three ad species** — inline banners wedged into the page, floating popups, and up to 10 bouncing ping-pong banners
 - **Countdown close buttons** — some ads make you wait, for authenticity
 - **Rickroll on click** — clicking an ad opens a configurable redirect URL
