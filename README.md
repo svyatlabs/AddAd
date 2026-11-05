@@ -64,4 +64,5 @@ npx web-ext build
 
 ## License
 
-No license yet — all rights reserved for now.
+Code: [Apache-2.0](LICENSE). The AddAd name, logo and icons are not covered
+by the license; all rights reserved (see [NOTICE](NOTICE)).
